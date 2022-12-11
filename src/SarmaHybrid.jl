@@ -1,5 +1,8 @@
 module SarmaHybrid
 
-# Write your package code here.
+import DifferentialEquations as DE 
+import Flux
+
+include("functions.jl")
 
 end
