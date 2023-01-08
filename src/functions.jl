@@ -212,7 +212,7 @@ function hybrid_model_s2(du, u, p, t, I, net_obj, L)
 
 	y = net_obj(p)(u)
 
- 	du[1] += -u[1]
+ 	du[1] = -u[1]
 	du[2] = 1/L * (v2_v - v1_v)
 	du[3] = 1/L * (v1_v - v2_v)
  	du[4] = 1/L * (v10_v)			- Flux.softplus(y[1])*u[4]
@@ -237,14 +237,7 @@ function predict_node_gaussian(INIT, NET_OBJ, P, T_INPUT, A_INPUT, TSPAN, SAVE_T
 	model_prob = DE.ODEProblem(_model, INIT[[1:3;7:size(INIT)[1]]], TSPAN)
 
 
-	out_data = Array(DE.solve(model_prob, DE.AutoTsit5(DE.Rosenbrock23()), p=P, saveat=SAVE_T, tstops=T_INPUT, abstol=1e-7, reltol=1e-4)) 
-	### out_data = Array(DE.solve(model_prob, DE.AutoTsit5(DE.Rosenbrock23()), p=P, saveat=SAVE_T, tstops=T_INPUT, abstol=1e-7, reltol=1e-4)) 
-	### out_data = Array(DE.solve(model_prob, DE.Rosenbrock23(), p=P, saveat=SAVE_T, tstops=T_INPUT)) 
-	### out_data = Array(DE.solve(model_prob, DE.AutoTsit5(DE.Rosenbrock23()), p=P, saveat=SAVE_T, tstops=T_INPUT, sensealg=SciMLSensitivity.QuadratureAdjoint())) 
-	### out_data = Array(DE.solve(model_prob, DE.Tsit5(), p=P, saveat=SAVE_T, tstops=T_INPUT, sensealg=SciMLSensitivity.QuadratureAdjoint())) 
-	### out_data = Array(DE.solve(model_prob, DE.AutoTsit5(DE.Rosenbrock23()), p=P, saveat=SAVE_T, tstops=T_INPUT, sensealg=SciMLSensitivity.QuadratureAdjoint(autojacvec=SciMLSensitivity.ReverseDiffVJP()))) 
-	### out_data = Array(DE.solve(model_prob, DE.AutoTsit5(DE.Rosenbrock23(autodiff=false)), p=P, saveat=SAVE_T, tstops=T_INPUT, sensealg=SciMLSensitivity.QuadratureAdjoint(autojacvec=SciMLSensitivity.ZygoteVJP()))) 
-
+	out_data = Array(DE.solve(model_prob, DE.AutoTsit5(DE.Rosenbrock23(autodiff=false)), p=P, saveat=SAVE_T, tstops=T_INPUT, abstol=1e-7, reltol=1e-4)) 
 end
 
 
@@ -267,70 +260,37 @@ end
 
 
 
-function do_plot(pred_dat, true_dat, str_folder, loss_list, param, tt)
+function do_plot(pred_dat, true_dat, str_folder, loss_list, param, tt, command)
 
 
-	plt.figure(figsize=(20, 12))
+	p1 = Plots.histogram(param, label="weights", color="black", bins=40, xlabel="Weights", ylabel="#")
+	p2 = Plots.plot(tt, hcat(pred_dat[3,:], true_dat[3,:]), label=["Pred M3K*" "True M3K*"], linewidth=3, ylabel="Norm. conc (a.u.)", xlabel="Time (s)")
+	p3 = Plots.plot(tt, hcat(pred_dat[5,:], true_dat[8,:]), label=["Pred MK*" "True MK*"], linewidth=3, ylabel="Norm. conc (a.u.)", xlabel="Time (s)")
+	p4 = Plots.plot(tt, hcat(pred_dat[6,:], true_dat[9,:]), label=["Pred MK**" "True MK**"], linewidth=3, ylabel="Norm. conc (a.u.)", xlabel="Time (s)")
+	p5 = Plots.plot(log10.(loss_list), color="black", linewidth=3, ylabel="Log10(MAE)", xlabel="Iteration #")
+	p6 = Plots.plot(tt, pred_dat[10:end,:]', linewidth=3, title="Augmented dims")
 
+	full_p = Plots.plot(p1, p2, p3, p4, p5, p6, layout=(3,2), size=(1200, 1200))
+	Plots.display(full_p)
 
-	plt.subplot(3, 2, 1)
-	plt.hist(param, bins=40, label="Weights", color="black")
-	plt.xlabel("Weight size", fontsize=16)
-	plt.ylabel("#", fontsize=16)
-	plt.legend(fontsize=16)
-
-
-	plt.subplot(3, 2, 2)
-	plt.plot(tt, pred_dat[3, :], label="MODEL M3K*", linewidth=3, color="#7fc79f")
-	plt.plot(tt, true_dat[3, :], label="TRUE  M3K*", linewidth=3, color="#beaed4")
-	plt.ylabel("Norm. conc (a.u.)", fontsize=16)
-	plt.xlabel("Time (s)", fontsize=16)
-	plt.legend(fontsize=16)
-
-
-	plt.subplot(3, 2, 3)
-	plt.plot(tt, pred_dat[5, :], label="MODEL MK*", linewidth=3, color="#7fc79f")
-	plt.plot(tt, true_dat[8, :], label="TRUE  MK*", linewidth=3, color="#beaed4")
-	plt.ylabel("Norm. conc (a.u.)", fontsize=16)
-	plt.xlabel("Time (s)", fontsize=16)
-	plt.legend(fontsize=16)
-
-
-	plt.subplot(3, 2, 4)
-	plt.plot(tt, pred_dat[6, :], label="MODEL MK**", linewidth=3, color="#7fc79f")
-	plt.plot(tt, true_dat[9, :], label="TRUE  MK**", linewidth=3, color="#beaed4")
-	plt.ylabel("Norm. conc (a.u.)", fontsize=16)
-	plt.xlabel("Time (s)", fontsize=16)
-	plt.legend(fontsize=16)
-
-
-
-	plt.subplot(3, 2, 5)
-	plt.plot(log10.(loss_list), linewidth=3, color="black")
-	plt.ylabel("Log10(MAE)", fontsize=16)
-	plt.xlabel("Iteration #", fontsize=16)
-
-
-
-	plt.subplot(3, 2, 6)
-	for j in 10:size(pred_dat)[1]
-		plt.plot(tt, pred_dat[j ,:], linewidth=3)
+	if command == "save"
+		Plots.png(full_p, str_folder * replace(string(Dates.now()), ':'=>'_') * ".png")
+	elseif command == "show"
+		Plots.display(full_p)
+	elseif command == "show_save"
+		Plots.display(full_p)
+		Plots.png(full_p, str_folder * replace(string(Dates.now()), ':'=>'_') * ".png")
+	elseif command == "pass"
+	
+	else
+		println("Erroneous callback command given")
 	end
-	plt.ylabel("val (a.u.)", fontsize=16)
-	plt.xlabel("Time (s)", fontsize=16)
-
-
-	plt.subplots_adjust(left=0.05, right=0.99, top=0.99, bottom=0.05, wspace=0.2, hspace=0.3)
-
-
-	plt.savefig(str_folder * replace(string(Dates.now()), ':'=>'_') * ".jpg")
-	plt.close()
 
 end
 
 
 
-function callback(param, l, predictor, last_data, str_folder, loss_list, tt)
+function callback(param, l, predictor, last_data, str_folder, loss_list, tt, command)
 
 
 	println("=================================")
@@ -340,7 +300,7 @@ function callback(param, l, predictor, last_data, str_folder, loss_list, tt)
 	push!(loss_list, l)
 
 
-	do_plot(predictor(param), last_data, str_folder, loss_list, param, tt)
+	do_plot(predictor(param), last_data, str_folder, loss_list, param, tt, command)
 
 
 	return false
