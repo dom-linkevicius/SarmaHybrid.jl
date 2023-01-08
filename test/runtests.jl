@@ -3,6 +3,7 @@ using Test
 using NumericalIntegration
 
 @testset "SarmaHybrid.jl" begin
+<<<<<<< HEAD
     @test isapprox(SarmaHybrid.v1_f(3.0, 15.0, 500.0, 1.0), 75.75) 
     @test isapprox(SarmaHybrid.v1_f(3.0, 15.0, 500.0, 0.1), 3.0/11.0)
     
@@ -41,4 +42,7 @@ using NumericalIntegration
 
     @test SarmaHybrid.model_s2(repeat([0], 12), 1) == repeat([0], 12)
 
+=======
+    # Write your tests here.
+>>>>>>> e798cee8f275ae677bc26cdd602a5768cba10f6a
 end
