@@ -2,4 +2,4 @@ on:
   - push
   - pull_request
 
-language: julia
+language: julia 1.8.3
