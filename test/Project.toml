@@ -5,4 +5,3 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [compat]
 julia                   = "1"
 NumericalIntegration    = "0.3.3"
-SarmaHybrid             = "0.1.0"
