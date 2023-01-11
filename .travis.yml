@@ -4,5 +4,4 @@ on:
 
 language: julia
 rvm:
-  - 1.8
-  - nightly
+  - 1.8.3
