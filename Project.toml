@@ -16,13 +16,14 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 
 [compat]
 julia                   = "1"
-DifferentialEquations   = "7.6.0"
-Flux                    = "0.13.10"
-IterTools               = "1.4.0"
-Optimisers              = "0.2.14"
-Optimization            = "3.10.0"
-OptimizationOptimisers  = "0.1.1"
-Plots                   = "1.38.0"
+DifferentialEquations   = "7"
+Flux                    = "0.13"
+IterTools               = "1"
+Optimisers              = "0.2"
+Optimization            = "3"
+OptimizationOptimisers  = "0.1"
+Plots                   = "1"
+Distributions           = "0.25"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
