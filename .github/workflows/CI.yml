@@ -1,4 +1,4 @@
-name:SarmaHybrid CI 
+name: SarmaHybrid CI 
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 jobs:
