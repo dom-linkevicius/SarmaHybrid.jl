@@ -1,8 +1,0 @@
-on:
-  - push
-  - pull_request
-
-language: julia 
-
-julia:
-  - 1.8.3
