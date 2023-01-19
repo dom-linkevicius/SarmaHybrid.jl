@@ -10,8 +10,9 @@ The hybrid model contains [augmented neural ODEs](https://dl.acm.org/doi/10.5555
 ## Package installation
 
 Package installation should be as simple as:
-```import Pkg
-Pkg.add("https://github.com/dom-linkevicius/SarmaHybrid.jl/tree/first_updates")
+```julia
+import Pkg
+Pkg.add("https://github.com/dom-linkevicius/SarmaHybrid.jl")
 ```
 If there are any problems with this, please raise an issue.
 
@@ -25,7 +26,7 @@ The package currently implements $v_1$ - $v_{10}$ for model S2 from [Sarma and G
 
 ## Example usage
 
-```
+```julia
 ### Importing packages
 import SarmaHybrid
 import Distributions
@@ -70,7 +71,7 @@ train_loss = [] ### array to save training loss
 L2_reg_LAM = 1e-6 ### L2 regularization size
 
 
-loss(p, X_T, X_A, Y) = SarmaHybrid.loss_node(p, X_T, X_A, Y, net_re, TSPAN_TRAIN, SAVE_T_TRAIN, max_u0, L2_reg_LAM_LO) ### closure for the loss function
+loss(p, X_T, X_A, Y) = SarmaHybrid.loss_node(p, X_T, X_A, Y, net_re, TSPAN_TRAIN, SAVE_T_TRAIN, max_u0, L2_reg_LAM) ### closure for the loss function
 
 
 pred_func(p) = SarmaHybrid.predict_node_gaussian(TRAINING_DATA[:, 1, end], net_re, p, TRAINING_INPUTS_T[:,end], TRAINING_INPUTS_A[:,end], TSPAN_TRAIN, SAVE_T_TRAIN, max_u0) ### closure to generate predictions using the hybrid model S2

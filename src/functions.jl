@@ -147,9 +147,8 @@ end
 
 
 
-function init_concs()
-	vals = [0; 1000; 0; 4000; 0; 0; 1000; 0; 0; 100; 500; 500]
-end
+init_concs() = [0.0; 1000.0; 0.0; 4000.0; 0.0; 0.0; 1000.0; 0.0; 0.0; 100.0; 500.0; 500.0]
+
 
 
 
@@ -168,21 +167,22 @@ setmax - boolean to check whether to scale concentrations by maximal initial val
 """
 function gen_gauss_input_data(N, tspan, save_t, init_func, inp_dists; setmax=true)
 
-	all_data = []
-	all_inp_t  = []
-	all_inp_a  = []
+
+	u0 = init_func()
+
+	if setmax
+		max_u0 = maximum(u0)
+		u0 = u0 ./ max_u0
+	end
+
+	all_data   = Array{typeof(u0[1])}(undef, size(u0)[1], size(save_t)[1], N)
+	all_inp_t  = Array{typeof(u0[1])}(undef, maximum(inp_dists[1]), N)
+	all_inp_a  = Array{typeof(u0[1])}(undef, maximum(inp_dists[1]), N)
 
 	for i in 1:N
 
 		println("Run " * string(i))
 
-		u0 = init_func()
-		if setmax
-			max_u0 = maximum(u0)
-		else
-			max_u0 = 1
-		end
-		u0 = u0 ./ max_u0
 		n_inp = rand(inp_dists[1], 1)[1]
 		t_inp = [rand(inp_dists[2], n_inp); zeros(maximum(inp_dists[1]) - n_inp)]
 		a_inp = [rand(inp_dists[3], n_inp); zeros(maximum(inp_dists[1]) - n_inp)]
@@ -192,16 +192,9 @@ function gen_gauss_input_data(N, tspan, save_t, init_func, inp_dists; setmax=tru
 		prob 	 = DE.ODEProblem(_base_dudt, u0, tspan)
 		prob_sol = Array(DE.solve(prob, DE.Rosenbrock23(), saveat=save_t, tstops=t_inp))
 
-		if all_data == []
-			all_data = reshape(prob_sol, (size(prob_sol)[1], size(prob_sol)[2], 1))
-			all_inp_t = t_inp
-			all_inp_a = a_inp
-		else
-			all_data = cat(all_data, reshape(prob_sol, (size(prob_sol)[1], size(prob_sol)[2], 1)), dims=3)
-			all_inp_t = cat(all_inp_t, t_inp, dims=2)
-			all_inp_a = cat(all_inp_a, a_inp, dims=2)
-		end
-
+		all_data[:,:, i] = prob_sol
+		all_inp_t[:, i] = t_inp
+		all_inp_a[:, i] = a_inp
 
 	end
 
