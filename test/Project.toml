@@ -1,0 +1,7 @@
+[deps]
+NumericalIntegration = "e7bfaba1-d571-5449-8927-abc22e82249b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+julia                   = "1"
+NumericalIntegration    = "0.3"

@@ -60,21 +60,28 @@ end
 
 
 
+"""
+model_s2(u, L)
+MAPK model S2 from Sarma and Ghost (2012). 
+
+Parameters:
+
+u - arary of current state of the system
+L - float scaling factor
+u[1]  - Sig
+u[2]  - M3K
+u[3]  - M3K*
+u[4]  - M2K
+u[5]  - M2K*
+u[6]  - M2K**
+u[7]  - MK
+u[8]  - MK* 
+u[9]  - MK**
+u[10] - P1
+u[11] - P2
+u[12] - P3
+"""
 function model_s2(u, L)
-
-##### u[1]  - Sig
-##### u[2]  - M3K
-##### u[3]  - M3K*
-##### u[4]  - M2K
-##### u[5]  - M2K*
-##### u[6]  - M2K**
-##### u[7]  - MK
-##### u[8]  - MK* 
-##### u[9]  - MK**
-##### u[10] - P1
-##### u[11] - P2
-##### u[12] - P3
-
 	SIG    = u[1]
 	M3K    = u[2]
 	M3K_S  = u[3]
@@ -119,6 +126,17 @@ function model_s2(u, L)
 end
 
 
+
+"""
+prob_s2(du, u, p, t, I, L)
+model_s2 wrapper function to make it consistent with DifferentialEquations.jl
+
+Parameters:
+
+du, u, p, t - usual meaning in the context of DifferentialEquations.j
+I - input function that mutates u in-place
+L - float scaling of concentrations
+"""
 function prob_s2(du, u, p, t, I, L)
 
 	du[:] .= model_s2(u, L)
@@ -128,28 +146,43 @@ function prob_s2(du, u, p, t, I, L)
 end
 
 
-function init_concs()
-	vals = [0; 1000; 0; 4000; 0; 0; 1000; 0; 0; 100; 500; 500]
-end
+
+init_concs() = [0.0; 1000.0; 0.0; 4000.0; 0.0; 0.0; 1000.0; 0.0; 0.0; 100.0; 500.0; 500.0]
 
 
+
+
+"""
+gen_gauss_input_data(N, tspan, save_t, init_func, inp_dists; setmax=true)
+Function to generated data using the true model S2.
+
+Parameters:
+
+N - Int of simulations to run
+tspan - (t_start, t_end) tuple passed to DifferentialEquations.ODEProblem
+save_t - array of times at which the data is saved, passed to DifferentialEquations.solve
+init_func - function used to provide initial concentration for the simulations
+inp_dists - array with three objects (such that one could call rand(...) on them) used to sample parameters for inputs
+setmax - boolean to check whether to scale concentrations by maximal initial value
+"""
 function gen_gauss_input_data(N, tspan, save_t, init_func, inp_dists; setmax=true)
 
-	all_data = []
-	all_inp_t  = []
-	all_inp_a  = []
+
+	u0 = init_func()
+
+	if setmax
+		max_u0 = maximum(u0)
+		u0 = u0 ./ max_u0
+	end
+
+	all_data   = Array{typeof(u0[1])}(undef, size(u0)[1], size(save_t)[1], N)
+	all_inp_t  = Array{typeof(u0[1])}(undef, maximum(inp_dists[1]), N)
+	all_inp_a  = Array{typeof(u0[1])}(undef, maximum(inp_dists[1]), N)
 
 	for i in 1:N
 
 		println("Run " * string(i))
 
-		u0 = init_func()
-		if setmax
-			max_u0 = maximum(u0)
-		else
-			max_u0 = 1
-		end
-		u0 = u0 ./ max_u0
 		n_inp = rand(inp_dists[1], 1)[1]
 		t_inp = [rand(inp_dists[2], n_inp); zeros(maximum(inp_dists[1]) - n_inp)]
 		a_inp = [rand(inp_dists[3], n_inp); zeros(maximum(inp_dists[1]) - n_inp)]
@@ -159,16 +192,9 @@ function gen_gauss_input_data(N, tspan, save_t, init_func, inp_dists; setmax=tru
 		prob 	 = DE.ODEProblem(_base_dudt, u0, tspan)
 		prob_sol = Array(DE.solve(prob, DE.Rosenbrock23(), saveat=save_t, tstops=t_inp))
 
-		if all_data == []
-			all_data = reshape(prob_sol, (size(prob_sol)[1], size(prob_sol)[2], 1))
-			all_inp_t = t_inp
-			all_inp_a = a_inp
-		else
-			all_data = cat(all_data, reshape(prob_sol, (size(prob_sol)[1], size(prob_sol)[2], 1)), dims=3)
-			all_inp_t = cat(all_inp_t, t_inp, dims=2)
-			all_inp_a = cat(all_inp_a, a_inp, dims=2)
-		end
-
+		all_data[:,:, i] = prob_sol
+		all_inp_t[:, i] = t_inp
+		all_inp_a[:, i] = a_inp
 
 	end
 
@@ -177,32 +203,30 @@ end
 
 
 
+"""
+hybrid_model_s2(du, u, p, t, I, net_obj, L)
+Hybrid model S2 function used in training/prediction.
+
+Parameters:
+
+du, u, p, t - usual meaning in the DifferentialEquations.jl context.
+I - input function that mutates u in-place
+net_obj - Flux reconstructor object obtained from Flux.destructure
+L - scaling factor for concentrations
+
+HYBRID MODEL SPECIES
+u[1]  - Sig
+u[2]  - M3K
+u[3]  - M3K*
+u[4]  - MK
+u[5]  - MK* 
+u[6]  - MK**
+u[7] - P1
+u[8] - P2
+u[9] - P3
+u[10...] - augmented dimensions
+"""
 function hybrid_model_s2(du, u, p, t, I, net_obj, L)
-##### TRUE MODEL SPECIES
-##### u[1]  - Sig
-##### u[2]  - M3K
-##### u[3]  - M3K*
-##### u[4]  - M2K
-##### u[5]  - M2K*
-##### u[6]  - M2K**
-##### u[7]  - MK
-##### u[8]  - MK* 
-##### u[9]  - MK**
-##### u[10] - P1
-##### u[11] - P2
-##### u[12] - P3
-
-
-##### HYBRID MODEL SPECIES
-##### u[1]  - Sig
-##### u[2]  - M3K
-##### u[3]  - M3K*
-##### u[4]  - MK
-##### u[5]  - MK* 
-##### u[6]  - MK**
-##### u[7] - P1
-##### u[8] - P2
-##### u[9] - P3
 
 	v1_v  = v1_f(u[1], u[2], u[6], L)
 	v2_v  = v2_f(u[7], u[3], L)
@@ -231,7 +255,23 @@ end
 
 
 
+""" 
+predict_node_gaussian(INIT, NET_OBJ, P, T_INPUT, A_INPUT, TSPAN, SAVE_T, L)
+Function used to produce data from a hybrid model S2.
+
+Parameters:
+
+INIT - function tha returns initial concentrations
+NET_OBJ - reconstructor object obtained from Flux.destructure
+P - array of parameters for neural network
+T_INPUT - array of parameters with timing of inputs
+A_Input - array of parameters with amplitude of inputs
+TSPAN - tuple (t_start, t_end) with start and end times, eventually passed to DifferentialEquations.ODEProblem
+SAVE_T - array of times at which the data is saved, eventually passed to DifferentialEquations.solve
+L - float scaling factor to scale concentrations
+"""
 function predict_node_gaussian(INIT, NET_OBJ, P, T_INPUT, A_INPUT, TSPAN, SAVE_T, L)
+
 
 	_model(du, u, p, t) = hybrid_model_s2(du, u, p, t, t -> gauss_input!(du, t, T_INPUT, A_INPUT, size(T_INPUT)[1]), NET_OBJ, L)
 	model_prob = DE.ODEProblem(_model, INIT[[1:3;7:size(INIT)[1]]], TSPAN)
@@ -241,6 +281,23 @@ function predict_node_gaussian(INIT, NET_OBJ, P, T_INPUT, A_INPUT, TSPAN, SAVE_T
 end
 
 
+
+"""
+loss_node(P, X_T, X_A, Y, NET_RE, TSPAN, SAVE_T, L, LAM=0)
+Loss (L2) function that makes predictions given some parameters and calculates error between real species present in both the true and the hybrid models.
+
+Parameters:
+
+P - parameters for the neural network in hybrid_model_s2
+X_T - array of paramteres with timing of inputs
+X_A - array of parameters with timing of inputs
+Y - true data
+NET_RE - reconstructor object obtained from Flux.destructure
+TSPAN - tuple (t_start, t_end) with start and end times, eventually passed to DifferentialEquations.ODEProblem
+SAVE_T - array of times at which the data is saved, eventually passed to DifferentialEquations.solve
+L - float scaling factor to scale concentrations
+LAM - float L1 regularization constant, defaults to 0
+"""
 function loss_node(P, X_T, X_A, Y, NET_RE, TSPAN, SAVE_T, L, LAM=0)
 
     full_loss   = 0.0
@@ -260,6 +317,20 @@ end
 
 
 
+""" 
+do_plot(pred_dat, true_dat, str_folder, loss_list, param, tt, command)
+Convenience function used for plotting used in a callback.
+
+Parameters:
+
+pred_dat - array of data from the hybrid_model_s2
+true_dat - array of true data
+str_folder - string for the folder where to save the plots 
+loss_list - array with training loss values
+param - array of parameters
+tt - array of times at which data was saved
+command - what to do with the plots- "save" (only saves), "show" (only shows), "show_save" (shows and saves), "pass" (do nothing)
+"""
 function do_plot(pred_dat, true_dat, str_folder, loss_list, param, tt, command)
 
 
@@ -290,8 +361,21 @@ end
 
 
 
-function callback(param, l, predictor, last_data, str_folder, loss_list, tt, command)
+"""
+callback(param, l, predictor, last_data, str_folder, loss_list, tt, command)
+Callback function for reporting things and plotting during training
 
+Parameters:
+
+param - array of training parameters
+predictor - function f(p) that is used to predict values given some parameter p, currently only predict_node_gaussian is used
+last_data - array for the last true simulation that is used for comparison (can't really plot all simulations), can be non-last too
+str_folder - string for the folder where to save the plots
+loss_list - array where the training loss should be !push'ed 
+tt -  array of times where data was saved during simulations
+command - what to do with the plots- "save" (only saves), "show" (only shows), "show_save" (shows and saves), "pass" (do nothing)
+"""
+function callback(param, l, predictor, last_data, str_folder, loss_list, tt, command)
 
 	println("=================================")
 	println("Loss ", l)
