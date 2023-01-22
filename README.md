@@ -41,10 +41,10 @@ dt = 0.1  ### time-step for data saving
 
 ### data generation using the model S2
 N_TRAIN 	= 10  ### Number of simulations to run
-TSPAN_TRAIN 	= (0, 500)  ### Time span of the simulations
-SAVE_T_TRAIN	= TSPAN_TRAIN[1]:dt:TSPAN_TRAIN[2] ### Array of times for which data will be saved
+const TSPAN_TRAIN 	= (0, 500)  ### Time span of the simulations
+const SAVE_T_TRAIN	= TSPAN_TRAIN[1]:dt:TSPAN_TRAIN[2] ### Array of times for which data will be saved
 INIT_TRAIN 	= SarmaHybrid.init_concs ### Initial concentration, taken from Sarma, Ghosh (2012)
-max_u0 = maximum(SarmaHybrid.init_concs()) ### Used for scaling the concentrations to a range of 0 to 1
+const max_u0 = maximum(SarmaHybrid.init_concs()) ### Used for scaling the concentrations to a range of 0 to 1
 INP_DISTS_TRAIN = [2:6, Distributions.Uniform(TSPAN_TRAIN[1], TSPAN_TRAIN[2]-TSPAN_TRAIN[2]/5.), Distributions.Uniform(5/max_u0, 500/max_u0)]  ### Array of objects used to sample the parameters for input functions: # of inputs, timing of inputs, amplitude of input 
 
 TRAINING_DATA, TRAINING_INPUTS_T, TRAINING_INPUTS_A = SarmaHybrid.gen_gauss_input_data(N_TRAIN, TSPAN_TRAIN, SAVE_T_TRAIN, INIT_TRAIN, INP_DISTS_TRAIN) ### Data generation proper
@@ -61,14 +61,14 @@ net = Flux.Chain(Flux.Dense(n_spc + aug_dim, h_dim, Flux.celu),  ### neural netw
 		 		 Flux.Dense(h_dim, o_dim + aug_dim))
 
 
-net_p, net_re = Flux.destructure(net)
+const net_p, net_re = Flux.destructure(net)
 
 
 TRAINING_DATA     = cat(TRAINING_DATA, zeros(aug_dim, size(TRAINING_DATA)[2], size(TRAINING_DATA)[3]), dims=1) ### augmenting data for aNODEs
 
 
 train_loss = [] ### array to save training loss
-L2_reg_LAM = 1e-6 ### L2 regularization size
+const L2_reg_LAM = 1e-6 ### L2 regularization size
 
 
 loss(p, X_T, X_A, Y) = SarmaHybrid.loss_node(p, X_T, X_A, Y, net_re, TSPAN_TRAIN, SAVE_T_TRAIN, max_u0, L2_reg_LAM) ### closure for the loss function
@@ -76,7 +76,7 @@ loss(p, X_T, X_A, Y) = SarmaHybrid.loss_node(p, X_T, X_A, Y, net_re, TSPAN_TRAIN
 
 pred_func(p) = SarmaHybrid.predict_node_gaussian(TRAINING_DATA[:, 1, end], net_re, p, TRAINING_INPUTS_T[:,end], TRAINING_INPUTS_A[:,end], TSPAN_TRAIN, SAVE_T_TRAIN, max_u0) ### closure to generate predictions using the hybrid model S2
 
-cb(param, l) = SarmaHybrid.callback(param, l, pred_func, TRAINING_DATA[:,:,end], "Plots/S2_", train_loss, SAVE_T_TRAIN, "show_save") ### callback for convenience, saves data in Plots/ by default, to avoid spamming directory with plot files
+cb(param, l) = SarmaHybrid.callback(param, l, pred_func, TRAINING_DATA[:,:,end], "Plots/S2_", train_loss, SAVE_T_TRAIN, "save") ### callback for convenience, saves data in Plots/ by default, to avoid spamming directory with plot files
 
 adtype = Optimization.AutoForwardDiff()  ### ad type used to calculate gradients
 
